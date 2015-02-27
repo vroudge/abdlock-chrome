@@ -100,8 +100,7 @@ function onMessage(msg)
 {
   if (msg.type == "add-subscription")
     startSubscriptionSelection(msg.title, msg.url);
-};
-
+}
 // Reloads the displayed subscriptions and filters
 function reloadFilters()
 {
@@ -131,8 +130,8 @@ function reloadFilters()
   // User-entered filters
   var userFilters = backgroundPage.getUserFilters();
   populateList("userFiltersBox", userFilters.filters);
-  populateList("userCustomFiltersBox", userFilters.filters)
-  populateList("excludedDomainsBox", userFilters.exceptions);
+    populateList("userCustomFiltersBox", userFilters.filters);
+    populateList("excludedDomainsBox", userFilters.exceptions);
 }
 
 // Cleans up when the options window is closed
@@ -446,7 +445,7 @@ function onFilterChange(action, item, origin, param2)
         appendToListBox("userFiltersBox", item.text);
       break;
     case "filter.addedCustom":
-        console.log("filterchange filteraddedcustom")
+        console.log("filterchange filteraddedcustom");
         appendToListBox("userCustomFiltersBox", item.text);
       break;
     case "filter.removed":
@@ -570,20 +569,17 @@ function removeSelectedFilters(event)
 // Shows raw filters box and fills it with the current user filters
 function toggleFiltersInRawFormat(event)
 {
-  var target = "";
-  var filterbox = "";
-  var filterText = "";
 
-  if(event.currentTarget.id === "rawCustomFiltersButton"){
-    target = $('#rawCustomFilters');
-    filterbox = "userCustomFiltersBox";
-    filtertext = "rawCustomFiltersText";
-  }else{
-    target = $('#rawFilters');
-    filterbox ="userFiltersBox";
-    filtertext = "rawFiltersText";
-    console.log("kek");
-  }
+    if (event.currentTarget.id === "rawCustomFiltersButton") {
+        var target = $('#rawCustomFilters');
+        var filterbox = "userCustomFiltersBox";
+        var filtertext = "rawCustomFiltersText";
+    } else {
+        var target = $('#rawFilters');
+        var filterbox = "userFiltersBox";
+        var filtertext = "rawFiltersText";
+
+    }
   event.preventDefault();
 
   target.toggle();
@@ -765,6 +761,7 @@ window.onload = function(){ // todo follow syntax of existing codebase
       var link = document.getElementById('downloadList');
       link.href = generateDownloadLink(processedValue);
       link.style.display = 'block';
+      reloadFilters();
     }, false);
   }
 
@@ -778,6 +775,7 @@ window.onload = function(){ // todo follow syntax of existing codebase
         listingScopeResult.val(URLcomponents[sliderPosition]);
         urlGet = getURL(userFilterInput.val()) || originUrl;
         if(urlGet !== null){
+          console.log(urlGet);
           setInputValue();
         }
       }
@@ -792,7 +790,6 @@ window.onload = function(){ // todo follow syntax of existing codebase
     var data= getUserFilterInput();
     stringResultOfUserInput.val(takeOffHttp(encodeURI(data)));
     originUrl = getURL(encodeURI(data)); 
-    console.log(data);
     urlIsSet = true;     
     if(data = ""){
       urlIsSet = false;
@@ -803,7 +800,7 @@ window.onload = function(){ // todo follow syntax of existing codebase
     return userFilterInput.val();
   }
 
-  $('#whitelistCheck').click(function(data){
+  $('#whitelistCheck').click(function(){
 
     setInputValue();
   });
@@ -818,28 +815,29 @@ window.onload = function(){ // todo follow syntax of existing codebase
   function setInputValue() {
 
     stringResultOfUserInput.val(takeOffHttp(buildNewURL(sliderPosition)));
-  };
-
-  function getURL(urlstring){
-    //console.log(urlstring);
-    if(urlstring!== ""){ //TRY ADDING HTTP:// PROGRAMATICALLY
-      try{
-        if(urlstring.indexOf("http://") > -1){
-          var newUrl = new URL(encodeURI(urlstring));
-          listingScopeResult.val(URLcomponents[sliderPosition]);
-        }else{
-          var newUrl = new URL(encodeURI("http://"+urlstring));
-          listingScopeResult.val(URLcomponents[sliderPosition]);
-        }
-        return newUrl;
-      }catch(e){
-        if(!psl.isValid(urlstring)){
+  }
+    function getURL(urlstring){
+    var currentUrlString = urlstring.toLowerCase();
+    currentUrlString = currentUrlString.split(',');
+    for (var i = currentUrlString.length - 1; i >= 0; i--) {
+      if(currentUrlString[i]!== ""){ //TRY ADDING HTTP:// PROGRAMATICALLY
+        try{
+          if(currentUrlString[i].indexOf("http://") > -1){
+            currentUrlString[i] = new URL(encodeURI(currentUrlString[i]));
+            listingScopeResult.val(URLcomponents[sliderPosition]);
+          }else{
+            currentUrlString[i] = new URL(encodeURI("http://"+currentUrlString[i]));
+            listingScopeResult.val(URLcomponents[sliderPosition]);
+          }
+          console.log(currentUrlString);
+          return currentUrlString;
+        }catch(e){
           listingScopeResult.val("INVALID URL");
+          return encodeURI(currentUrlString);
         }
-        return encodeURI(urlstring);
       }
     }
-  }
+    }
 
   function buildNewURL(levelOfTrimming){
     var trimming = levelOfTrimming,
@@ -852,39 +850,48 @@ window.onload = function(){ // todo follow syntax of existing codebase
         whitelistString = "";
       }
 
-
-
+      var str="";
       switch(trimming){
         case 0:
-            return whitelistString+psl.parse(encodeURI(originUrl.hostname)).subdomain;
+          //if(psl.parse(encodeURI(originUrl.hostname)).subdomain != undefined){
+            str = psl.parse(encodeURI(originUrl.hostname)).subdomain;
+          //}
         break;
         case 1:
-           return whitelistString+psl.parse(encodeURI(originUrl.hostname)).domain;
+          //if(psl.parse(encodeURI(originUrl.hostname)).subdomain != undefined){
+            str= psl.parse(encodeURI(originUrl.hostname)).domain;
+          //}
         break;
         case 2:
-          return whitelistString+originUrl.protocol + "//" + originUrl.hostname;
+          str = originUrl.protocol + "//" + originUrl.hostname;
         break;
         case 3:
-            return whitelistString+originUrl.origin;
+          str = originUrl.origin;
         break;
         case 4:
-          return whitelistString+originUrl.origin + originUrl.pathname;
+          str = originUrl.origin + originUrl.pathname;
         break;
         case 5:
-          return whitelistString+originUrl.origin + originUrl.pathname + originUrl.search;
+          str = originUrl.origin + originUrl.pathname + originUrl.search;
         break;
         case 6:
-          return whitelistString+originUrl.href;
+          str = originUrl.href;
         break;
         default:
-          return "error"
+          str = "error";
         break;
       }
+      if(typeof str != 'undefined' && typeof str != 'NaN'){
+        if(str && str.indexOf("NaN") <0 && str.indexOf("undefined")){
+          return whitelistString + str;
+        }
+      }
+      return "Error";
     }
   }
 
   generateListFile();
-}
+};
 
 function addCustomTypedFilter(event)
 {
@@ -897,10 +904,17 @@ function addCustomTypedFilter(event)
   
   try
   {
-    filter = parseFilter(element.value);
-    var d = matcher.defaultMatcher,
-        filterToCheck = d.matchesAny(element.value, "DOCUMENT", element.value);
-        console.log(filterToCheck);
+    var strFilter = element.value;
+    strFilter = strFilter.replace("%2A", "*").replace("%20", "");
+
+    strFilter = strFilter.split(",");
+    console.log(strFilter);
+    
+    for (var i = strFilter.length - 1; i >= 0; i--) {
+      filter = parseFilter(strFilter[i]);
+      var d = matcher.defaultMatcher,
+        filterToCheck = d.matchesAny(strFilter[i], "DOCUMENT", strFilter[i]);
+
         if(filterToCheck !== null){
           console.log(filterClass.BlockingFilter.prototype);
           if(filterClass.BlockingFilter.prototype.isPrototypeOf(filterToCheck)){
@@ -910,7 +924,6 @@ function addCustomTypedFilter(event)
           }
           if(confirm("Override existing " + filterType + " " + filterToCheck.text + " ?") == true){
             if (filter){
-              console.log(filterToCheck);
               FilterStorage.addFilter(filter, null, null, null, "custom");
               document.getElementById('newCustomFilter').value = "";
               document.getElementById('amountResult').value = "";
@@ -930,7 +943,7 @@ function addCustomTypedFilter(event)
           urlGet = null;
           urlIsSet=false;
         }
-
+    }
   }
   catch (error)
   {
