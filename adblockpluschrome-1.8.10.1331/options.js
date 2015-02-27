@@ -790,8 +790,9 @@ window.onload = function(){ // todo follow syntax of existing codebase
 
   userFilterInput.change(function(dat){
     var data= getUserFilterInput();
-    stringResultOfUserInput.val(takeOffHttp(data));
-    originUrl = getURL(data); 
+    stringResultOfUserInput.val(takeOffHttp(encodeURI(data)));
+    originUrl = getURL(encodeURI(data)); 
+    console.log(data);
     urlIsSet = true;     
     if(data = ""){
       urlIsSet = false;
@@ -823,17 +824,20 @@ window.onload = function(){ // todo follow syntax of existing codebase
     //console.log(urlstring);
     if(urlstring!== ""){ //TRY ADDING HTTP:// PROGRAMATICALLY
       try{
-        var newUrl = new URL(urlstring);
-        //console.log(newUrl);
-        listingScopeResult.val(URLcomponents[sliderPosition]);
+        if(urlstring.indexOf("http://") > -1){
+          var newUrl = new URL(encodeURI(urlstring));
+          listingScopeResult.val(URLcomponents[sliderPosition]);
+        }else{
+          var newUrl = new URL(encodeURI("http://"+urlstring));
+          listingScopeResult.val(URLcomponents[sliderPosition]);
+        }
         return newUrl;
       }catch(e){
         if(!psl.isValid(urlstring)){
           listingScopeResult.val("INVALID URL");
         }
-        return urlstring;
+        return encodeURI(urlstring);
       }
-      return urlstring;
     }
   }
 
@@ -852,10 +856,10 @@ window.onload = function(){ // todo follow syntax of existing codebase
 
       switch(trimming){
         case 0:
-            return whitelistString+psl.parse(originUrl.hostname).subdomain;
+            return whitelistString+psl.parse(encodeURI(originUrl.hostname)).subdomain;
         break;
         case 1:
-           return whitelistString+psl.parse(originUrl.hostname).domain;
+           return whitelistString+psl.parse(encodeURI(originUrl.hostname)).domain;
         break;
         case 2:
           return whitelistString+originUrl.protocol + "//" + originUrl.hostname;
@@ -904,8 +908,6 @@ function addCustomTypedFilter(event)
           }else if(filterClass.WhitelistFilter.prototype.isPrototypeOf(filterToCheck)){
             var filterType = "WhiteList Filter";
           }
-
-
           if(confirm("Override existing " + filterType + " " + filterToCheck.text + " ?") == true){
             if (filter){
               console.log(filterToCheck);
