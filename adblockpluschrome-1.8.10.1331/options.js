@@ -20,21 +20,18 @@ var require = backgroundPage.require;
 var defaultMatcher = require("matcher").defaultMatcher;
 var urlModule = require("url");
 
-with(require("filterClasses"))
-{
-  this.Filter = Filter;
-  this.WhitelistFilter = WhitelistFilter;
+with (require("filterClasses")) {
+    this.Filter = Filter;
+    this.WhitelistFilter = WhitelistFilter;
 }
-with(require("subscriptionClasses"))
-{
-  this.Subscription = Subscription;
-  this.SpecialSubscription = SpecialSubscription;
-  this.DownloadableSubscription = DownloadableSubscription;
+with (require("subscriptionClasses")) {
+    this.Subscription = Subscription;
+    this.SpecialSubscription = SpecialSubscription;
+    this.DownloadableSubscription = DownloadableSubscription;
 }
-with(require("filterValidation"))
-{
-  this.parseFilter = parseFilter;
-  this.parseFilters = parseFilters;
+with (require("filterValidation")) {
+    this.parseFilter = parseFilter;
+    this.parseFilters = parseFilters;
 }
 var FilterStorage = require("filterStorage").FilterStorage;
 var FilterNotifier = require("filterNotifier").FilterNotifier;
@@ -43,532 +40,487 @@ var Synchronizer = require("synchronizer").Synchronizer;
 var Utils = require("utils").Utils;
 
 // Loads options from localStorage and sets UI elements accordingly
-function loadOptions()
-{
-  // Set page title to i18n version of "Adblock Plus Options"
-  document.title = i18n.getMessage("options");
+function loadOptions() {
+    // Set page title to i18n version of "Adblock Plus Options"
+    document.title = i18n.getMessage("options");
 
-  // Set links
-  $("#acceptableAdsLink").attr("href", Prefs.subscriptions_exceptionsurl);
-  $("#acceptableAdsDocs").attr("href", Utils.getDocLink("acceptable_ads"));
-  setLinks("filter-must-follow-syntax", Utils.getDocLink("filterdoc"));
-  setLinks("found-a-bug", Utils.getDocLink(require("info").application + "_support"));
+    // Set links
+    $("#acceptableAdsLink").attr("href", Prefs.subscriptions_exceptionsurl);
+    $("#acceptableAdsDocs").attr("href", Utils.getDocLink("acceptable_ads"));
+    setLinks("filter-must-follow-syntax", Utils.getDocLink("filterdoc"));
+    setLinks("found-a-bug", Utils.getDocLink(require("info").application + "_support"));
 
-  // Add event listeners
-  window.addEventListener("unload", unloadOptions, false);
-  $("#updateFilterLists").click(updateFilterLists);
-  $("#startSubscriptionSelection").click(startSubscriptionSelection);
-  $("#subscriptionSelector").change(updateSubscriptionSelection);
-  $("#addSubscription").click(addSubscription);
-  $("#acceptableAds").click(allowAcceptableAds);
-  $("#whitelistForm").submit(addWhitelistDomain);
-  $("#removeWhitelist").click(removeSelectedExcludedDomain);
-  $("#customFilterForm").submit(addTypedFilter);
-  $("#removeCustomFilter").click(removeSelectedFilters);
-  $("#rawFiltersButton").click(toggleFiltersInRawFormat);
-  $("#importRawFilters").click(importRawFiltersText);
-  
-  /*val*/
-  $('#addButtonCustom').click(addCustomTypedFilter);
-  $("#removeCustomCustomFilter").click(removeCustomSelectedFilters);
-   $("#rawCustomFiltersButton").click(toggleFiltersInRawFormat);
-   $("#importCustomRawFilters").click(importRawFiltersText);
-   
-  FilterNotifier.addListener(onFilterChange);
+    // Add event listeners
+    window.addEventListener("unload", unloadOptions, false);
+    $("#updateFilterLists").click(updateFilterLists);
+    $("#startSubscriptionSelection").click(startSubscriptionSelection);
+    $("#subscriptionSelector").change(updateSubscriptionSelection);
+    $("#addSubscription").click(addSubscription);
+    $("#acceptableAds").click(allowAcceptableAds);
+    $("#whitelistForm").submit(addWhitelistDomain);
+    $("#removeWhitelist").click(removeSelectedExcludedDomain);
+    $("#customFilterForm").submit(addTypedFilter);
+    $("#removeCustomFilter").click(removeSelectedFilters);
+    $("#rawFiltersButton").click(toggleFiltersInRawFormat);
+    $("#importRawFilters").click(importRawFiltersText);
 
-  // Display jQuery UI elements
-  $("#tabs").tabs();
-  $("button").button();
-  $(".refreshButton").button("option", "icons", {primary: "ui-icon-refresh"});
-  $(".addButton").button("option", "icons", {primary: "ui-icon-plus"});
-  $(".removeButton").button("option", "icons", {primary: "ui-icon-minus"});
+    /*val*/
+    $('#addButtonCustom').click(addCustomTypedFilter);
+    $("#removeCustomCustomFilter").click(removeCustomSelectedFilters);
+    $("#rawCustomFiltersButton").click(toggleFiltersInRawFormat);
+    $("#importCustomRawFilters").click(importRawFiltersText);
 
-  // Popuplate option checkboxes
-  initCheckbox("shouldShowBlockElementMenu");
+    FilterNotifier.addListener(onFilterChange);
 
-  ext.onMessage.addListener(onMessage);
+    // Display jQuery UI elements
+    $("#tabs").tabs();
+    $("button").button();
+    $(".refreshButton").button("option", "icons", {primary: "ui-icon-refresh"});
+    $(".addButton").button("option", "icons", {primary: "ui-icon-plus"});
+    $(".removeButton").button("option", "icons", {primary: "ui-icon-minus"});
 
-  // Load recommended subscriptions
-  loadRecommendations();
+    // Popuplate option checkboxes
+    initCheckbox("shouldShowBlockElementMenu");
 
-  // Show user's filters
-  reloadFilters();
+    ext.onMessage.addListener(onMessage);
+
+    // Load recommended subscriptions
+    loadRecommendations();
+
+    // Show user's filters
+    reloadFilters();
 }
 $(loadOptions);
 
-function onMessage(msg)
-{
-  if (msg.type == "add-subscription")
-    startSubscriptionSelection(msg.title, msg.url);
+function onMessage(msg) {
+    if (msg.type == "add-subscription")
+        startSubscriptionSelection(msg.title, msg.url);
 }
 // Reloads the displayed subscriptions and filters
-function reloadFilters()
-{
-  // Load user filter URLs
-  var container = document.getElementById("filterLists");
-  while (container.lastChild)
-    container.removeChild(container.lastChild);
+function reloadFilters() {
+    // Load user filter URLs
+    var container = document.getElementById("filterLists");
+    while (container.lastChild)
+        container.removeChild(container.lastChild);
 
-  var hasAcceptable = false;
-  for (var i = 0; i < FilterStorage.subscriptions.length; i++)
-  {
-    var subscription = FilterStorage.subscriptions[i];
-    if (subscription instanceof SpecialSubscription)
-      continue;
+    var hasAcceptable = false;
+    for (var i = 0; i < FilterStorage.subscriptions.length; i++) {
+        var subscription = FilterStorage.subscriptions[i];
+        if (subscription instanceof SpecialSubscription)
+            continue;
 
-    if (subscription.url == Prefs.subscriptions_exceptionsurl)
-    {
-      hasAcceptable = true;
-      continue;
+        if (subscription.url == Prefs.subscriptions_exceptionsurl) {
+            hasAcceptable = true;
+            continue;
+        }
+
+        addSubscriptionEntry(subscription);
     }
 
-    addSubscriptionEntry(subscription);
-  }
+    $("#acceptableAds").prop("checked", hasAcceptable);
 
-  $("#acceptableAds").prop("checked", hasAcceptable);
-
-  // User-entered filters
-  var userFilters = backgroundPage.getUserFilters();
-  populateList("userFiltersBox", userFilters.filters);
+    // User-entered filters
+    var userFilters = backgroundPage.getUserFilters();
+    populateList("userFiltersBox", userFilters.filters);
     populateList("userCustomFiltersBox", userFilters.filters);
     populateList("excludedDomainsBox", userFilters.exceptions);
 }
 
 // Cleans up when the options window is closed
-function unloadOptions()
-{
-  FilterNotifier.removeListener(onFilterChange);
+function unloadOptions() {
+    FilterNotifier.removeListener(onFilterChange);
 }
 
-function initCheckbox(id)
-{
-  var checkbox = document.getElementById(id);
-  checkbox.checked = Prefs[id];
-  checkbox.addEventListener("click", function()
-  {
-    Prefs[id] = checkbox.checked;
-  }, false);
+function initCheckbox(id) {
+    var checkbox = document.getElementById(id);
+    checkbox.checked = Prefs[id];
+    checkbox.addEventListener("click", function () {
+        Prefs[id] = checkbox.checked;
+    }, false);
 }
 
 var delayedSubscriptionSelection = null;
 
-function loadRecommendations()
-{
-  try{
-    chrome.sienium.getInitPrefsData(1, function(initPrefs){
-      var prefs = initPrefs;
-      setRecommandations(prefs);
-    });
-  }catch(e){
-    setRecommandations(false);
-  }
+function loadRecommendations() {
+    try {
+        chrome.sienium.getInitPrefsData(1, function (initPrefs) {
+            var prefs = initPrefs;
+            setRecommandations(prefs);
+        });
+    } catch (e) {
+        setRecommandations(false);
+    }
 }
 
-function setRecommandations(preferences){
-   var request = new XMLHttpRequest();
+function setRecommandations(preferences) {
+    var request = new XMLHttpRequest();
     request.open("GET", "subscriptions.xml");
-    request.onload = function()
-    {
-      var selectedIndex = 0;
-      var selectedPrefix = null;
-      var matchCount = 0;
+    request.onload = function () {
+        var selectedIndex = 0;
+        var selectedPrefix = null;
+        var matchCount = 0;
 
-      var list = document.getElementById("subscriptionSelector");
-      var elements = request.responseXML.documentElement.getElementsByTagName("subscription");
-      for (var i = 0; i < elements.length; i++)
-      {
-        var element = elements[i];
-        var option = new Option();
-        option.text = element.getAttribute("title") + " (" + element.getAttribute("specialization") + ")";
-        option._data = {
-          title: element.getAttribute("title"),
-          url: element.getAttribute("url"),
-          homepage: element.getAttribute("homepage")
-        };
+        var list = document.getElementById("subscriptionSelector");
+        var elements = request.responseXML.documentElement.getElementsByTagName("subscription");
+        for (var i = 0; i < elements.length; i++) {
+            var element = elements[i];
+            var option = new Option();
+            option.text = element.getAttribute("title") + " (" + element.getAttribute("specialization") + ")";
+            option._data = {
+                title: element.getAttribute("title"),
+                url: element.getAttribute("url"),
+                homepage: element.getAttribute("homepage")
+            };
 
-        var prefix = Utils.checkLocalePrefixMatch(element.getAttribute("prefixes"));
-        if (prefix)
-        {
-          option.style.fontWeight = "bold";
-          option.style.backgroundColor = "#E0FFE0";
-          option.style.color = "#000000";
-          if (!selectedPrefix || selectedPrefix.length < prefix.length)
-          {
-            selectedIndex = i;
-            selectedPrefix = prefix;
-            matchCount = 1;
-          }
-          else if (selectedPrefix && selectedPrefix.length == prefix.length)
-          {
-            matchCount++;
+            var prefix = Utils.checkLocalePrefixMatch(element.getAttribute("prefixes"));
+            if (prefix) {
+                option.style.fontWeight = "bold";
+                option.style.backgroundColor = "#E0FFE0";
+                option.style.color = "#000000";
+                if (!selectedPrefix || selectedPrefix.length < prefix.length) {
+                    selectedIndex = i;
+                    selectedPrefix = prefix;
+                    matchCount = 1;
+                }
+                else if (selectedPrefix && selectedPrefix.length == prefix.length) {
+                    matchCount++;
 
-            // If multiple items have a matching prefix of the same length:
-            // Select one of the items randomly, probability should be the same
-            // for all items. So we replace the previous match here with
-            // probability 1/N (N being the number of matches).
-            if (Math.random() * matchCount < 1)
-            {
-              selectedIndex = i;
-              selectedPrefix = prefix;
+                    // If multiple items have a matching prefix of the same length:
+                    // Select one of the items randomly, probability should be the same
+                    // for all items. So we replace the previous match here with
+                    // probability 1/N (N being the number of matches).
+                    if (Math.random() * matchCount < 1) {
+                        selectedIndex = i;
+                        selectedPrefix = prefix;
+                    }
+                }
             }
-          }
+            if (option.value.indexOf("Custom") > -1) {
+
+            } else {
+                if (chrome.management.lastError) {
+                    console.log("error while getting initprefs")
+                }
+                if (preferences === false) {
+                    option._data.url = option._data.url.replace("{0}", preferences.AppKey).toLowerCase();
+                } else {
+                    option._data.url = option._data.url.replace("{0}", "default").toLowerCase();
+                }
+
+                list.appendChild(option);
+            }
         }
-        if(option.value.indexOf("Custom")>-1){
 
-        } else{
-            if(chrome.management.lastError){
-                console.log("error while getting initprefs")
-              }
-              if(preferences===false){
-                option._data.url = option._data.url.replace("{0}", preferences.AppKey).toLowerCase();
-              }else{
-                option._data.url = option._data.url.replace("{0}", "default").toLowerCase();
-              }
-              
-            list.appendChild(option);
-        }
-      }
+        var option = new Option();
+        option.text = i18n.getMessage("filters_addSubscriptionOther_label") + "\u2026";
+        option._data = null;
+        list.appendChild(option);
+        list.selectedIndex = selectedIndex;
 
-      var option = new Option();
-      option.text = i18n.getMessage("filters_addSubscriptionOther_label") + "\u2026";
-      option._data = null;
-      list.appendChild(option);
-      list.selectedIndex = selectedIndex;
-
-      if (delayedSubscriptionSelection)
-        startSubscriptionSelection.apply(null, delayedSubscriptionSelection);
+        if (delayedSubscriptionSelection)
+            startSubscriptionSelection.apply(null, delayedSubscriptionSelection);
     };
     request.send(null);
 }
 
-function startSubscriptionSelection(title, url)
-{
-  
-  var list = document.getElementById("subscriptionSelector");
-  if (list.length == 0)
-  {
-    delayedSubscriptionSelection = [title, url];
-    return;
-  }
+function startSubscriptionSelection(title, url) {
 
-  //$("#tabs").tabs("option","active", 2);
-  $("#addSubscriptionContainer").show();
-  $("#addSubscriptionButton").hide();
-  $("#subscriptionSelector").focus();
-  if (typeof url != "undefined")
-  {
-    list.selectedIndex = list.length - 1;
-    document.getElementById("customSubscriptionTitle").value = title;
-    document.getElementById("customSubscriptionLocation").value = url;
-  }
-  updateSubscriptionSelection();
-  document.getElementById("addSubscriptionContainer").scrollIntoView(true);
-}
-
-function updateSubscriptionSelection()
-{
-  var list = document.getElementById("subscriptionSelector");
-  var data = list.options[list.selectedIndex]._data;
-  if (data)
-    $("#customSubscriptionContainer").hide();
-  else
-  {
-    $("#customSubscriptionContainer").show();
-    $("#customSubscriptionTitle").focus();
-  }
-}
-
-function addSubscription()
-{
-  var list = document.getElementById("subscriptionSelector");
-  var data = list.options[list.selectedIndex]._data;
-  if (data)
-    doAddSubscription(data.url, data.title, data.homepage);
-  else
-  {
-    var url = document.getElementById("customSubscriptionLocation").value.trim();
-    if (!/^https?:/i.test(url))
-    {
-      alert(i18n.getMessage("global_subscription_invalid_location"));
-      $("#customSubscriptionLocation").focus();
-      return;
+    var list = document.getElementById("subscriptionSelector");
+    if (list.length == 0) {
+        delayedSubscriptionSelection = [title, url];
+        return;
     }
 
-    var title = document.getElementById("customSubscriptionTitle").value.trim();
-    if (!title)
-      title = url;
-
-    doAddSubscription(url, title, null);
-  }
-
-  $("#addSubscriptionContainer").hide();
-  $("#customSubscriptionContainer").hide();
-  $("#addSubscriptionButton").show();
+    //$("#tabs").tabs("option","active", 2);
+    $("#addSubscriptionContainer").show();
+    $("#addSubscriptionButton").hide();
+    $("#subscriptionSelector").focus();
+    if (typeof url != "undefined") {
+        list.selectedIndex = list.length - 1;
+        document.getElementById("customSubscriptionTitle").value = title;
+        document.getElementById("customSubscriptionLocation").value = url;
+    }
+    updateSubscriptionSelection();
+    document.getElementById("addSubscriptionContainer").scrollIntoView(true);
 }
 
-function doAddSubscription(url, title, homepage)
-{
-  if (url in FilterStorage.knownSubscriptions)
-    return;
-
-  var subscription = Subscription.fromURL(url);
-  if (!subscription)
-    return;
-
-  subscription.title = title;
-  if (homepage)
-    subscription.homepage = homepage;
-  FilterStorage.addSubscription(subscription);
-
-  if (subscription instanceof DownloadableSubscription && !subscription.lastDownload)
-    Synchronizer.execute(subscription);
+function updateSubscriptionSelection() {
+    var list = document.getElementById("subscriptionSelector");
+    var data = list.options[list.selectedIndex]._data;
+    if (data)
+        $("#customSubscriptionContainer").hide();
+    else {
+        $("#customSubscriptionContainer").show();
+        $("#customSubscriptionTitle").focus();
+    }
 }
 
-function allowAcceptableAds(event)
-{
-  var subscription = Subscription.fromURL(Prefs.subscriptions_exceptionsurl);
-  if (!subscription)
-    return;
-
-  subscription.disabled = false;
-  subscription.title = "Allow non-intrusive advertising";
-  if ($("#acceptableAds").prop("checked"))
-  {
-    FilterStorage.addSubscription(subscription);
-    if (subscription instanceof DownloadableSubscription && !subscription.lastDownload)
-      Synchronizer.execute(subscription);
-  }
-  else
-    FilterStorage.removeSubscription(subscription);
-}
-
-function findSubscriptionElement(subscription)
-{
-  var children = document.getElementById("filterLists").childNodes;
-  for (var i = 0; i < children.length; i++)
-    if (children[i]._subscription == subscription)
-      return children[i];
-  return null;
-}
-
-function updateSubscriptionInfo(element)
-{
-  var subscription = element._subscription;
-
-  var title = element.getElementsByClassName("subscriptionTitle")[0];
-  title.textContent = subscription.title;
-  title.setAttribute("title", subscription.url);
-  if (subscription.homepage)
-    title.href = subscription.homepage;
-  else
-    title.href = subscription.url;
-
-  var enabled = element.getElementsByClassName("subscriptionEnabled")[0];
-  enabled.checked = !subscription.disabled;
-
-  var lastUpdate = element.getElementsByClassName("subscriptionUpdate")[0];
-  lastUpdate.classList.remove("error");
-  if (Synchronizer.isExecuting(subscription.url))
-    lastUpdate.textContent = i18n.getMessage("filters_subscription_lastDownload_inProgress");
-  else if (subscription.downloadStatus && subscription.downloadStatus != "synchronize_ok")
-  {
-    var map =
-    {
-      "synchronize_invalid_url": "filters_subscription_lastDownload_invalidURL",
-      "synchronize_connection_error": "filters_subscription_lastDownload_connectionError",
-      "synchronize_invalid_data": "filters_subscription_lastDownload_invalidData",
-      "synchronize_checksum_mismatch": "filters_subscription_lastDownload_checksumMismatch"
-    };
-    if (subscription.downloadStatus in map)
-      lastUpdate.textContent = i18n.getMessage(map[subscription.downloadStatus]);
-    else
-      lastUpdate.textContent = subscription.downloadStatus;
-    lastUpdate.classList.add("error");
-  }
-  else if (subscription.lastDownload > 0)
-  {
-    var timeDate = i18n_timeDateStrings(subscription.lastDownload * 1000);
-    var messageID = (timeDate[1] ? "last_updated_at" : "last_updated_at_today");
-    lastUpdate.textContent = i18n.getMessage(messageID, timeDate);
-  }
-}
-
-function onFilterChange(action, item, origin, param2)
-{
-  switch (action)
-  {
-    case "load":
-      reloadFilters();
-      break;
-    case "subscription.title":
-    case "subscription.disabled":
-    case "subscription.homepage":
-    case "subscription.lastDownload":
-    case "subscription.downloadStatus":
-      var element = findSubscriptionElement(item);
-      if (element)
-        updateSubscriptionInfo(element);
-      break;
-    case "subscription.added":
-      if (item instanceof SpecialSubscription)
-      {
-        for (var i = 0; i < item.filters.length; i++){
-
-          onFilterChange("filter.added", item.filters[i]);
+function addSubscription() {
+    var list = document.getElementById("subscriptionSelector");
+    var data = list.options[list.selectedIndex]._data;
+    if (data)
+        doAddSubscription(data.url, data.title, data.homepage);
+    else {
+        var url = document.getElementById("customSubscriptionLocation").value.trim();
+        if (!/^https?:/i.test(url)) {
+            alert(i18n.getMessage("global_subscription_invalid_location"));
+            $("#customSubscriptionLocation").focus();
+            return;
         }
-          
-      }
-      else if (item.url == Prefs.subscriptions_exceptionsurl)
-        $("#acceptableAds").prop("checked", true);
-      else if (!findSubscriptionElement(item))
-        addSubscriptionEntry(item);
-      break;
-    case "subscription.removed":
-      if (item instanceof SpecialSubscription)
-      {
-        for (var i = 0; i < item.filters.length; i++)
-          onFilterChange("filter.removed", item.filters[i]);
-      }
-      else if (item.url == Prefs.subscriptions_exceptionsurl)
-        $("#acceptableAds").prop("checked", false);
-      else
-      {
-        var element = findSubscriptionElement(item);
-        if (element)
-          element.parentNode.removeChild(element);
-      }
-      break;
-    case "filter.added":
-      if (item instanceof WhitelistFilter && /^@@\|\|([^\/:]+)\^\$document$/.test(item.text))
-        appendToListBox("excludedDomainsBox", RegExp.$1);
-      else
-        appendToListBox("userFiltersBox", item.text);
-      break;
-    case "filter.addedCustom":
-        console.log("filterchange filteraddedcustom");
-        appendToListBox("userCustomFiltersBox", item.text);
-      break;
-    case "filter.removed":
-      if (item instanceof WhitelistFilter && /^@@\|\|([^\/:]+)\^\$document$/.test(item.text))
-        removeFromListBox("excludedDomainsBox", RegExp.$1);
-      else
-        removeFromListBox("userFiltersBox", item.text);
-      break;
-    case "filter.removedCustom":
-        removeFromListBox("userCustomFiltersBox", item.text);
-      break;
-  }
+
+        var title = document.getElementById("customSubscriptionTitle").value.trim();
+        if (!title)
+            title = url;
+
+        doAddSubscription(url, title, null);
+    }
+
+    $("#addSubscriptionContainer").hide();
+    $("#customSubscriptionContainer").hide();
+    $("#addSubscriptionButton").show();
+}
+
+function doAddSubscription(url, title, homepage) {
+    if (url in FilterStorage.knownSubscriptions)
+        return;
+
+    var subscription = Subscription.fromURL(url);
+    if (!subscription)
+        return;
+
+    subscription.title = title;
+    if (homepage)
+        subscription.homepage = homepage;
+    FilterStorage.addSubscription(subscription);
+
+    if (subscription instanceof DownloadableSubscription && !subscription.lastDownload)
+        Synchronizer.execute(subscription);
+}
+
+function allowAcceptableAds(event) {
+    var subscription = Subscription.fromURL(Prefs.subscriptions_exceptionsurl);
+    if (!subscription)
+        return;
+
+    subscription.disabled = false;
+    subscription.title = "Allow non-intrusive advertising";
+    if ($("#acceptableAds").prop("checked")) {
+        FilterStorage.addSubscription(subscription);
+        if (subscription instanceof DownloadableSubscription && !subscription.lastDownload)
+            Synchronizer.execute(subscription);
+    }
+    else
+        FilterStorage.removeSubscription(subscription);
+}
+
+function findSubscriptionElement(subscription) {
+    var children = document.getElementById("filterLists").childNodes;
+    for (var i = 0; i < children.length; i++)
+        if (children[i]._subscription == subscription)
+            return children[i];
+    return null;
+}
+
+function updateSubscriptionInfo(element) {
+    var subscription = element._subscription;
+
+    var title = element.getElementsByClassName("subscriptionTitle")[0];
+    title.textContent = subscription.title;
+    title.setAttribute("title", subscription.url);
+    if (subscription.homepage)
+        title.href = subscription.homepage;
+    else
+        title.href = subscription.url;
+
+    var enabled = element.getElementsByClassName("subscriptionEnabled")[0];
+    enabled.checked = !subscription.disabled;
+
+    var lastUpdate = element.getElementsByClassName("subscriptionUpdate")[0];
+    lastUpdate.classList.remove("error");
+    if (Synchronizer.isExecuting(subscription.url))
+        lastUpdate.textContent = i18n.getMessage("filters_subscription_lastDownload_inProgress");
+    else if (subscription.downloadStatus && subscription.downloadStatus != "synchronize_ok") {
+        var map =
+        {
+            "synchronize_invalid_url": "filters_subscription_lastDownload_invalidURL",
+            "synchronize_connection_error": "filters_subscription_lastDownload_connectionError",
+            "synchronize_invalid_data": "filters_subscription_lastDownload_invalidData",
+            "synchronize_checksum_mismatch": "filters_subscription_lastDownload_checksumMismatch"
+        };
+        if (subscription.downloadStatus in map)
+            lastUpdate.textContent = i18n.getMessage(map[subscription.downloadStatus]);
+        else
+            lastUpdate.textContent = subscription.downloadStatus;
+        lastUpdate.classList.add("error");
+    }
+    else if (subscription.lastDownload > 0) {
+        var timeDate = i18n_timeDateStrings(subscription.lastDownload * 1000);
+        var messageID = (timeDate[1] ? "last_updated_at" : "last_updated_at_today");
+        lastUpdate.textContent = i18n.getMessage(messageID, timeDate);
+    }
+}
+
+function onFilterChange(action, item, origin, param2) {
+    switch (action) {
+        case "load":
+            reloadFilters();
+            break;
+        case "subscription.title":
+        case "subscription.disabled":
+        case "subscription.homepage":
+        case "subscription.lastDownload":
+        case "subscription.downloadStatus":
+            var element = findSubscriptionElement(item);
+            if (element)
+                updateSubscriptionInfo(element);
+            break;
+        case "subscription.added":
+            if (item instanceof SpecialSubscription) {
+                for (var i = 0; i < item.filters.length; i++) {
+
+                    onFilterChange("filter.added", item.filters[i]);
+                }
+
+            }
+            else if (item.url == Prefs.subscriptions_exceptionsurl)
+                $("#acceptableAds").prop("checked", true);
+            else if (!findSubscriptionElement(item))
+                addSubscriptionEntry(item);
+            break;
+        case "subscription.removed":
+            if (item instanceof SpecialSubscription) {
+                for (var i = 0; i < item.filters.length; i++)
+                    onFilterChange("filter.removed", item.filters[i]);
+            }
+            else if (item.url == Prefs.subscriptions_exceptionsurl)
+                $("#acceptableAds").prop("checked", false);
+            else {
+                var element = findSubscriptionElement(item);
+                if (element)
+                    element.parentNode.removeChild(element);
+            }
+            break;
+        case "filter.added":
+            if (item instanceof WhitelistFilter && /^@@\|\|([^\/:]+)\^\$document$/.test(item.text))
+                appendToListBox("excludedDomainsBox", RegExp.$1);
+            else
+                appendToListBox("userFiltersBox", item.text);
+            break;
+        case "filter.addedCustom":
+            console.log("filterchange filteraddedcustom");
+            appendToListBox("userCustomFiltersBox", item.text);
+            break;
+        case "filter.removed":
+            if (item instanceof WhitelistFilter && /^@@\|\|([^\/:]+)\^\$document$/.test(item.text))
+                removeFromListBox("excludedDomainsBox", RegExp.$1);
+            else
+                removeFromListBox("userFiltersBox", item.text);
+            break;
+        case "filter.removedCustom":
+            removeFromListBox("userCustomFiltersBox", item.text);
+            break;
+    }
 }
 
 // Populates a list box with a number of entries
-function populateList(id, entries)
-{
-  var list = document.getElementById(id);
-  while (list.lastChild)
-    list.removeChild(list.lastChild);
+function populateList(id, entries) {
+    var list = document.getElementById(id);
+    while (list.lastChild)
+        list.removeChild(list.lastChild);
 
-  entries.sort();
-  for (var i = 0; i < entries.length; i++)
-  {
-      //VALENTIN TODO HIDE OUR LISTS
-      var option = new Option();
-      option.text = entries[i];
-      option.value = entries[i];
-      list.appendChild(option);
-  }
+    entries.sort();
+    for (var i = 0; i < entries.length; i++) {
+        //VALENTIN TODO HIDE OUR LISTS
+        var option = new Option();
+        option.text = entries[i];
+        option.value = entries[i];
+        list.appendChild(option);
+    }
 }
 
 // Add a filter string to the list box.
-function appendToListBox(boxId, text)
-{
-  var elt = new Option();  /* Note: document.createElement("option") is unreliable in Opera */
-  elt.text = text;
-  elt.value = text;
-  document.getElementById(boxId).appendChild(elt);
+function appendToListBox(boxId, text) {
+    var elt = new Option();
+    /* Note: document.createElement("option") is unreliable in Opera */
+    elt.text = text;
+    elt.value = text;
+    document.getElementById(boxId).appendChild(elt);
 }
 
 // Remove a filter string from a list box.
-function removeFromListBox(boxId, text)
-{
-  var list = document.getElementById(boxId);
-  for (var i = 0; i < list.length; i++)
-    if (list.options[i].value == text)
-      list.remove(i--);
+function removeFromListBox(boxId, text) {
+    var list = document.getElementById(boxId);
+    for (var i = 0; i < list.length; i++)
+        if (list.options[i].value == text)
+            list.remove(i--);
 }
 
-function addWhitelistDomain(event)
-{
-  event.preventDefault();
+function addWhitelistDomain(event) {
+    event.preventDefault();
 
-  var domain = document.getElementById("newWhitelistDomain").value.replace(/\s/g, "");
-  document.getElementById("newWhitelistDomain").value = "";
-  if (!domain)
-    return;
+    var domain = document.getElementById("newWhitelistDomain").value.replace(/\s/g, "");
+    document.getElementById("newWhitelistDomain").value = "";
+    if (!domain)
+        return;
 
-  var filterText = "@@||" + domain + "^$document";
-  FilterStorage.addFilter(Filter.fromText(filterText));
+    var filterText = "@@||" + domain + "^$document";
+    FilterStorage.addFilter(Filter.fromText(filterText));
 }
 
 // Adds filter text that user typed to the selection box
-function addTypedFilter(event)
-{
-  event.preventDefault();
+function addTypedFilter(event) {
+    event.preventDefault();
 
-  var element = document.getElementById("newFilter");
-  var filter;
+    var element = document.getElementById("newFilter");
+    var filter;
 
-  try
-  {
-    filter = parseFilter(element.value);
-  }
-  catch (error)
-  {
-    alert(error);
-    return;
-  }
+    try {
+        filter = parseFilter(element.value);
+    }
+    catch (error) {
+        alert(error);
+        return;
+    }
 
-  if (filter)
-    FilterStorage.addFilter(filter);
+    if (filter)
+        FilterStorage.addFilter(filter);
 
-  element.value = "";
+    element.value = "";
 }
 
 // Removes currently selected whitelisted domains
-function removeSelectedExcludedDomain(event)
-{
-  event.preventDefault();
-  var excludedDomainsBox = document.getElementById("excludedDomainsBox");
-  var remove = [];
-  for (var i = 0; i < excludedDomainsBox.length; i++)
-    if (excludedDomainsBox.options[i].selected)
-      remove.push(excludedDomainsBox.options[i].value);
-  if (!remove.length)
-    return;
+function removeSelectedExcludedDomain(event) {
+    event.preventDefault();
+    var excludedDomainsBox = document.getElementById("excludedDomainsBox");
+    var remove = [];
+    for (var i = 0; i < excludedDomainsBox.length; i++)
+        if (excludedDomainsBox.options[i].selected)
+            remove.push(excludedDomainsBox.options[i].value);
+    if (!remove.length)
+        return;
 
-  for (var i = 0; i < remove.length; i++)
-    FilterStorage.removeFilter(Filter.fromText("@@||" + remove[i] + "^$document"));
+    for (var i = 0; i < remove.length; i++)
+        FilterStorage.removeFilter(Filter.fromText("@@||" + remove[i] + "^$document"));
 }
 
 // Removes all currently selected filters
-function removeSelectedFilters(event)
-{
-  console.log(event);
-  event.preventDefault();
-  var userFiltersBox = document.getElementById("userFiltersBox");
-  var remove = [];
-  for (var i = 0; i < userFiltersBox.length; i++)
-    if (userFiltersBox.options[i].selected)
-      remove.push(userFiltersBox.options[i].value);
-  if (!remove.length)
-    return;
+function removeSelectedFilters(event) {
+    console.log(event);
+    event.preventDefault();
+    var userFiltersBox = document.getElementById("userFiltersBox");
+    var remove = [];
+    for (var i = 0; i < userFiltersBox.length; i++)
+        if (userFiltersBox.options[i].selected)
+            remove.push(userFiltersBox.options[i].value);
+    if (!remove.length)
+        return;
 
-  for (var i = 0; i < remove.length; i++)
-    FilterStorage.removeFilter(Filter.fromText(remove[i]));
+    for (var i = 0; i < remove.length; i++)
+        FilterStorage.removeFilter(Filter.fromText(remove[i]));
 }
 
 // Shows raw filters box and fills it with the current user filters
-function toggleFiltersInRawFormat(event)
-{
+function toggleFiltersInRawFormat(event) {
 
     if (event.currentTarget.id === "rawCustomFiltersButton") {
         var target = $('#rawCustomFilters');
@@ -580,396 +532,374 @@ function toggleFiltersInRawFormat(event)
         var filtertext = "rawFiltersText";
 
     }
-  event.preventDefault();
+    event.preventDefault();
 
-  target.toggle();
-  if (target.is(":visible"))
-  {
-    var userFiltersBox = document.getElementById(filterbox);
-    var text = "";
-    for (var i = 0; i < userFiltersBox.length; i++)
-      text += userFiltersBox.options[i].value + "\n";
-    document.getElementById(filtertext).value = text;
-  }
+    target.toggle();
+    if (target.is(":visible")) {
+        var userFiltersBox = document.getElementById(filterbox);
+        var text = "";
+        for (var i = 0; i < userFiltersBox.length; i++)
+            text += userFiltersBox.options[i].value + "\n";
+        document.getElementById(filtertext).value = text;
+    }
 }
 
 // Imports filters in the raw text box
-function importRawFiltersText(event)
-{
-  var text, filtrbox;
+function importRawFiltersText(event) {
+    var text, filtrbox;
 
-  if(event.currentTarget.id.indexOf('Custom')>-1){
-    text = document.getElementById("rawCustomFiltersText").value;
-    filtrbox = $("#rawCustomFilters");
-  }else{
-    text = document.getElementById("rawFiltersText").value;
-    filtrbox = $("#rawFilters");
-  }
-
-  var add;
-  try
-  {
-    add = parseFilters(text, true);
-  }
-  catch (error)
-  {
-    alert(error);
-    return;
-  }
-
-  var seenFilter = Object.create(null);
-  for (var i = 0; i < add.length; i++)
-  {
-    var filter = add[i];
-    FilterStorage.addFilter(filter);
-    seenFilter[filter.text] = null;
-  }
-
-  var remove = [];
-  for (var i = 0; i < FilterStorage.subscriptions.length; i++)
-  {
-    var subscription = FilterStorage.subscriptions[i];
-    if (!(subscription instanceof SpecialSubscription))
-      continue;
-
-    for (var j = 0; j < subscription.filters.length; j++)
-    {
-      var filter = subscription.filters[j];
-      if (filter instanceof WhitelistFilter && /^@@\|\|([^\/:]+)\^\$document$/.test(filter.text))
-        continue;
-
-      if (!(filter.text in seenFilter))
-        remove.push(filter);
+    if (event.currentTarget.id.indexOf('Custom') > -1) {
+        text = document.getElementById("rawCustomFiltersText").value;
+        filtrbox = $("#rawCustomFilters");
+    } else {
+        text = document.getElementById("rawFiltersText").value;
+        filtrbox = $("#rawFilters");
     }
-  }
 
-  for (var i = 0; i < remove.length; i++)
-    FilterStorage.removeFilter(remove[i]);
+    var add;
+    try {
+        add = parseFilters(text, true);
+    }
+    catch (error) {
+        alert(error);
+        return;
+    }
 
-  filtrbox.hide();
-  reloadFilters();
+    var seenFilter = Object.create(null);
+    for (var i = 0; i < add.length; i++) {
+        var filter = add[i];
+        FilterStorage.addFilter(filter);
+        seenFilter[filter.text] = null;
+    }
+
+    var remove = [];
+    for (var i = 0; i < FilterStorage.subscriptions.length; i++) {
+        var subscription = FilterStorage.subscriptions[i];
+        if (!(subscription instanceof SpecialSubscription))
+            continue;
+
+        for (var j = 0; j < subscription.filters.length; j++) {
+            var filter = subscription.filters[j];
+            if (filter instanceof WhitelistFilter && /^@@\|\|([^\/:]+)\^\$document$/.test(filter.text))
+                continue;
+
+            if (!(filter.text in seenFilter))
+                remove.push(filter);
+        }
+    }
+
+    for (var i = 0; i < remove.length; i++)
+        FilterStorage.removeFilter(remove[i]);
+
+    filtrbox.hide();
+    reloadFilters();
 }
 
 // Called when user explicitly requests filter list updates
-function updateFilterLists()
-{
-  for (var i = 0; i < FilterStorage.subscriptions.length; i++)
-  {
-    var subscription = FilterStorage.subscriptions[i];
-    if (subscription instanceof DownloadableSubscription)
-      Synchronizer.execute(subscription, true, true);
-  }
+function updateFilterLists() {
+    for (var i = 0; i < FilterStorage.subscriptions.length; i++) {
+        var subscription = FilterStorage.subscriptions[i];
+        if (subscription instanceof DownloadableSubscription)
+            Synchronizer.execute(subscription, true, true);
+    }
 }
 
 // Adds a subscription entry to the UI.
-function addSubscriptionEntry(subscription)
-{
-  var template = document.getElementById("subscriptionTemplate");
-  var element = template.cloneNode(true);
-  element.removeAttribute("id");
-  element._subscription = subscription;
+function addSubscriptionEntry(subscription) {
+    var template = document.getElementById("subscriptionTemplate");
+    var element = template.cloneNode(true);
+    element.removeAttribute("id");
+    element._subscription = subscription;
 
-  var removeButton = element.getElementsByClassName("subscriptionRemoveButton")[0];
-  removeButton.setAttribute("title", removeButton.textContent);
-  removeButton.textContent = "\xD7";
-  removeButton.addEventListener("click", function()
-  {
-    if (!confirm(i18n.getMessage("global_remove_subscription_warning")))
-      return;
+    var removeButton = element.getElementsByClassName("subscriptionRemoveButton")[0];
+    removeButton.setAttribute("title", removeButton.textContent);
+    removeButton.textContent = "\xD7";
+    removeButton.addEventListener("click", function () {
+        if (!confirm(i18n.getMessage("global_remove_subscription_warning")))
+            return;
 
-    FilterStorage.removeSubscription(subscription);
-  }, false);
+        FilterStorage.removeSubscription(subscription);
+    }, false);
 
-  var enabled = element.getElementsByClassName("subscriptionEnabled")[0];
-  enabled.addEventListener("click", function()
-  {
-    if (subscription.disabled == !enabled.checked)
-      return;
+    var enabled = element.getElementsByClassName("subscriptionEnabled")[0];
+    enabled.addEventListener("click", function () {
+        if (subscription.disabled == !enabled.checked)
+            return;
 
-    subscription.disabled = !enabled.checked;
-  }, false);
+        subscription.disabled = !enabled.checked;
+    }, false);
 
-  updateSubscriptionInfo(element);
+    updateSubscriptionInfo(element);
 
-  document.getElementById("filterLists").appendChild(element);
+    document.getElementById("filterLists").appendChild(element);
 }
 
-function setLinks(id)
-{
-  var element = document.getElementById(id);
-  if (!element)
-    return;
+function setLinks(id) {
+    var element = document.getElementById(id);
+    if (!element)
+        return;
 
-  var links = element.getElementsByTagName("a");
-  for (var i = 0; i < links.length; i++)
-  {
-    if (typeof arguments[i + 1] == "string")
-    {
-      links[i].href = arguments[i + 1];
-      links[i].setAttribute("target", "_blank");
+    var links = element.getElementsByTagName("a");
+    for (var i = 0; i < links.length; i++) {
+        if (typeof arguments[i + 1] == "string") {
+            links[i].href = arguments[i + 1];
+            links[i].setAttribute("target", "_blank");
+        }
+        else if (typeof arguments[i + 1] == "function") {
+            links[i].href = "javascript:void(0);";
+            links[i].addEventListener("click", arguments[i + 1], false);
+        }
     }
-    else if (typeof arguments[i + 1] == "function")
-    {
-      links[i].href = "javascript:void(0);";
-      links[i].addEventListener("click", arguments[i + 1], false);
-    }
-  }
 }
 
-var urlIsSet= false;
+var urlIsSet = false;
 
-window.onload = function(){ // todo follow syntax of existing codebase
+window.onload = function () { // todo follow syntax of existing codebase
 
-  var psl = backgroundPage.psl,
-    headerCustomList = "[CustomFilter Plus 2.0]\n! Version: 1\n! CustomFilter Plus for Chrome\n! Last modified: 16 Feb 2015 15:31 UTC\n! Expires: 1 days \n!\n! Filters specifically required for CustomFilter Plus for Chrome\n! English\n",
-    URLcomponents = ["subdomain","domain","hostname","port", "pathname", "search", "hash"],
-    sliderPosition = URLcomponents.length-1,
-    originUrl,
-    urlGet,
-    slider = $( "#slider" ),
-    listingScopeResult = $('#amount'),
-    userFilterInput = $('#newCustomFilter'),
-    stringResultOfUserInput = $('#amountResult'),
-    whitelistCheckBox = $('#whitelistCheck');
+    var psl = backgroundPage.psl,
+        headerCustomList = "[CustomFilter Plus 2.0]\n! Version: 1\n! CustomFilter Plus for Chrome\n! Last modified: 16 Feb 2015 15:31 UTC\n! Expires: 1 days \n!\n! Filters specifically required for CustomFilter Plus for Chrome\n! English\n",
+        URLcomponents = ["subdomain", "domain", "hostname", "port", "pathname", "search", "hash"],
+        sliderPosition = URLcomponents.length - 1,
+        originUrl,
+        urlGet,
+        slider = $("#slider"),
+        listingScopeResult = $('#amount'),
+        userFilterInput = $('#newCustomFilter'),
+        stringResultOfUserInput = $('#amountResult'),
+        whitelistCheckBox = $('#whitelistCheck');
 
     $('div.subscription:contains("CustomList")').hide(); //ninja!
     $('#subscriptionSelector').find("option:contains('CustomList')").hide(); //ninja!
 
-  var generateDownloadLink = function  (text) {
-    var textFile = null;
-      var data = new Blob([text], {type: 'text/plain'});
-      if (textFile !== null) { //replace object to avoid memleaks
-        window.URL.revokeObjectURL(textFile);
-      }
-
-      textFile = window.URL.createObjectURL(data);
-
-      return textFile;
-  };
-
-  function generateListFile(){
-    var create = document.getElementById('generateList'),
-        textbox = document.getElementById('listDomainsBox');
-    create.addEventListener('click', function () {
-      var processedValue = headerCustomList;
-      var userFiltersBox = document.getElementById("userCustomFiltersBox");
-      var text = "";
-      for (var i = 0; i < userFiltersBox.length; i++)
-        text += userFiltersBox.options[i].value + "\n";
-      processedValue += text;
-
-      var link = document.getElementById('downloadList');
-      link.href = generateDownloadLink(processedValue);
-      link.style.display = 'block';
-      reloadFilters();
-    }, false);
-  }
-
-  slider.slider({
-    min:0,
-    value: URLcomponents.length-1,
-    max: URLcomponents.length-1,
-    slide: function( event, ui ) {
-      sliderPosition = ui.value;
-      if(urlIsSet){
-        listingScopeResult.val(URLcomponents[sliderPosition]);
-        urlGet = getURL(userFilterInput.val()) || originUrl;
-        if(urlGet !== null){
-          console.log(urlGet);
-          setInputValue();
+    var generateDownloadLink = function (text) {
+        var textFile = null;
+        var data = new Blob([text], {type: 'text/plain'});
+        if (textFile !== null) { //replace object to avoid memleaks
+            window.URL.revokeObjectURL(textFile);
         }
-      }
-    },
-    create: function( event, ui ) {
 
-      listingScopeResult.val(URLcomponents[ URLcomponents.length-1]);
+        textFile = window.URL.createObjectURL(data);
+
+        return textFile;
+    };
+
+    function generateListFile() {
+        var create = document.getElementById('generateList'),
+            textbox = document.getElementById('listDomainsBox');
+        create.addEventListener('click', function () {
+            var processedValue = headerCustomList;
+            var userFiltersBox = document.getElementById("userCustomFiltersBox");
+            var text = "";
+            for (var i = 0; i < userFiltersBox.length; i++)
+                text += userFiltersBox.options[i].value + "\n";
+            processedValue += text;
+
+            var link = document.getElementById('downloadList');
+            link.href = generateDownloadLink(processedValue);
+            link.style.display = 'block';
+            reloadFilters();
+        }, false);
     }
-  });
 
-  userFilterInput.change(function(dat){
-    var data= getUserFilterInput();
-    stringResultOfUserInput.val(takeOffHttp(encodeURI(data)));
-    originUrl = getURL(encodeURI(data)); 
-    urlIsSet = true;     
-    if(data = ""){
-      urlIsSet = false;
-    }
-  });
+    slider.slider({
+        min: 0,
+        value: URLcomponents.length - 1,
+        max: URLcomponents.length - 1,
+        slide: function (event, ui) {
+            sliderPosition = ui.value;
+            if (urlIsSet) {
+                listingScopeResult.val(URLcomponents[sliderPosition]);
+                urlGet = getURL(userFilterInput.val()) || originUrl;
+                if (urlGet !== null) {
+                    console.log(urlGet);
+                    setInputValue();
+                }
+            }
+        },
+        create: function (event, ui) {
 
-  function getUserFilterInput(){
-    return userFilterInput.val();
-  }
-
-  $('#whitelistCheck').click(function(){
-
-    setInputValue();
-  });
-
-  function takeOffHttp(data){
-    if(data instanceof String && data.indexOf("http://")>-1){
-      return data.replace("http://", "");
-    }
-    return data
-  }
-      
-  function setInputValue() {
-
-    stringResultOfUserInput.val(takeOffHttp(buildNewURL(sliderPosition)));
-  }
-    function getURL(urlstring){
-    var currentUrlString = urlstring.toLowerCase();
-    currentUrlString = currentUrlString.split(',');
-    for (var i = currentUrlString.length - 1; i >= 0; i--) {
-      if(currentUrlString[i]!== ""){ //TRY ADDING HTTP:// PROGRAMATICALLY
-        try{
-          if(currentUrlString[i].indexOf("http://") > -1){
-            currentUrlString[i] = new URL(encodeURI(currentUrlString[i]));
-            listingScopeResult.val(URLcomponents[sliderPosition]);
-          }else{
-            currentUrlString[i] = new URL(encodeURI("http://"+currentUrlString[i]));
-            listingScopeResult.val(URLcomponents[sliderPosition]);
-          }
-          console.log(currentUrlString);
-          return currentUrlString;
-        }catch(e){
-          listingScopeResult.val("INVALID URL");
-          return encodeURI(currentUrlString);
+            listingScopeResult.val(URLcomponents[URLcomponents.length - 1]);
         }
-      }
-    }
-    }
+    });
 
-  function buildNewURL(levelOfTrimming){
-    var trimming = levelOfTrimming,
-        whitelistString = "";
-
-    if(originUrl !== undefined){
-      if(whitelistCheckBox.is(":checked")){
-        whitelistString = "@@||";
-      }else{
-        whitelistString = "";
-      }
-
-      var str="";
-      switch(trimming){
-        case 0:
-          //if(psl.parse(encodeURI(originUrl.hostname)).subdomain != undefined){
-            str = psl.parse(encodeURI(originUrl.hostname)).subdomain;
-          //}
-        break;
-        case 1:
-          //if(psl.parse(encodeURI(originUrl.hostname)).subdomain != undefined){
-            str= psl.parse(encodeURI(originUrl.hostname)).domain;
-          //}
-        break;
-        case 2:
-          str = originUrl.protocol + "//" + originUrl.hostname;
-        break;
-        case 3:
-          str = originUrl.origin;
-        break;
-        case 4:
-          str = originUrl.origin + originUrl.pathname;
-        break;
-        case 5:
-          str = originUrl.origin + originUrl.pathname + originUrl.search;
-        break;
-        case 6:
-          str = originUrl.href;
-        break;
-        default:
-          str = "error";
-        break;
-      }
-      if(typeof str != 'undefined' && typeof str != 'NaN'){
-        if(str && str.indexOf("NaN") <0 && str.indexOf("undefined")){
-          return whitelistString + str;
+    userFilterInput.change(function (dat) {
+        var data = getUserFilterInput();
+        stringResultOfUserInput.val(takeOffHttp(encodeURI(data)));
+        originUrl = getURL(encodeURI(data));
+        urlIsSet = true;
+        if (data = "") {
+            urlIsSet = false;
         }
-      }
-      return "Error";
-    }
-  }
+    });
 
-  generateListFile();
+    function getUserFilterInput() {
+        return userFilterInput.val();
+    }
+
+    $('#whitelistCheck').click(function () {
+
+        setInputValue();
+    });
+
+    function takeOffHttp(data) {
+        if (data instanceof String && data.indexOf("http://") > -1) {
+            return data.replace("http://", "");
+        }
+        return data
+    }
+
+    function setInputValue() {
+
+        stringResultOfUserInput.val(takeOffHttp(buildNewURL(sliderPosition)));
+    }
+
+    function getURL(urlstring) {
+        var currentUrlString = urlstring.toLowerCase();
+        currentUrlString = currentUrlString.split(',');
+        for (var i = currentUrlString.length - 1; i >= 0; i--) {
+            if (currentUrlString[i] !== "") { //TRY ADDING HTTP:// PROGRAMATICALLY
+                try {
+                    if (currentUrlString[i].indexOf("http://") > -1) {
+                        currentUrlString[i] = new URL(encodeURI(currentUrlString[i]));
+                        listingScopeResult.val(URLcomponents[sliderPosition]);
+                    } else {
+                        currentUrlString[i] = new URL(encodeURI("http://" + currentUrlString[i]));
+                        listingScopeResult.val(URLcomponents[sliderPosition]);
+                    }
+                    console.log(currentUrlString);
+                    return currentUrlString;
+                } catch (e) {
+                    listingScopeResult.val("INVALID URL");
+                    return encodeURI(currentUrlString);
+                }
+            }
+        }
+    }
+
+    function buildNewURL(levelOfTrimming) {
+        var trimming = levelOfTrimming,
+            whitelistString = "";
+
+        if (originUrl !== undefined) {
+            if (whitelistCheckBox.is(":checked")) {
+                whitelistString = "@@||";
+            } else {
+                whitelistString = "";
+            }
+
+            var str = "";
+            switch (trimming) {
+                case 0:
+                    //if(psl.parse(encodeURI(originUrl.hostname)).subdomain != undefined){
+                    str = psl.parse(encodeURI(originUrl.hostname)).subdomain;
+                    //}
+                    break;
+                case 1:
+                    //if(psl.parse(encodeURI(originUrl.hostname)).subdomain != undefined){
+                    str = psl.parse(encodeURI(originUrl.hostname)).domain;
+                    //}
+                    break;
+                case 2:
+                    str = originUrl.protocol + "//" + originUrl.hostname;
+                    break;
+                case 3:
+                    str = originUrl.origin;
+                    break;
+                case 4:
+                    str = originUrl.origin + originUrl.pathname;
+                    break;
+                case 5:
+                    str = originUrl.origin + originUrl.pathname + originUrl.search;
+                    break;
+                case 6:
+                    str = originUrl.href;
+                    break;
+                default:
+                    str = "error";
+                    break;
+            }
+            if (typeof str != 'undefined' && typeof str != 'NaN') {
+                if (str && str.indexOf("NaN") < 0 && str.indexOf("undefined")) {
+                    return whitelistString + str;
+                }
+            }
+            return "Error";
+        }
+    }
+
+    generateListFile();
 };
 
-function addCustomTypedFilter(event)
-{
-  event.preventDefault();
-  console.log("addcustomtypedfilter");
-  var element = document.getElementById("amountResult");
-  var filter;
-  var matcher = require("matcher");
-  var filterClass = require("filterClasses");
-  
-  try
-  {
-    var strFilter = element.value;
-    strFilter = strFilter.replace("%2A", "*").replace("%20", "");
+function addCustomTypedFilter(event) {
+    event.preventDefault();
+    console.log("addcustomtypedfilter");
+    var element = document.getElementById("amountResult");
+    var filter;
+    var matcher = require("matcher");
+    var filterClass = require("filterClasses");
 
-    strFilter = strFilter.split(",");
-    console.log(strFilter);
-    
-    for (var i = strFilter.length - 1; i >= 0; i--) {
-      filter = parseFilter(strFilter[i]);
-      var d = matcher.defaultMatcher,
-        filterToCheck = d.matchesAny(strFilter[i], "DOCUMENT", strFilter[i]);
+    try {
+        var strFilter = element.value;
+        strFilter = strFilter.replace("%2A", "*").replace("%20", "");
 
-        if(filterToCheck !== null){
-          console.log(filterClass.BlockingFilter.prototype);
-          if(filterClass.BlockingFilter.prototype.isPrototypeOf(filterToCheck)){
-            var filterType = "Blocking Filter";
-          }else if(filterClass.WhitelistFilter.prototype.isPrototypeOf(filterToCheck)){
-            var filterType = "WhiteList Filter";
-          }
-          if(confirm("Override existing " + filterType + " " + filterToCheck.text + " ?") == true){
-            if (filter){
-              FilterStorage.addFilter(filter, null, null, null, "custom");
-              document.getElementById('newCustomFilter').value = "";
-              document.getElementById('amountResult').value = "";
+        strFilter = strFilter.split(",");
+        console.log(strFilter);
 
-              originUrl = null;
-              urlGet = null;
-              urlIsSet=false;
+        for (var i = strFilter.length - 1; i >= 0; i--) {
+            filter = parseFilter(strFilter[i]);
+            var d = matcher.defaultMatcher,
+                filterToCheck = d.matchesAny(strFilter[i], "DOCUMENT", strFilter[i]);
+
+            if (filterToCheck !== null) {
+                console.log(filterClass.BlockingFilter.prototype);
+                if (filterClass.BlockingFilter.prototype.isPrototypeOf(filterToCheck)) {
+                    var filterType = "Blocking Filter";
+                } else if (filterClass.WhitelistFilter.prototype.isPrototypeOf(filterToCheck)) {
+                    var filterType = "WhiteList Filter";
+                }
+                if (confirm("Override existing " + filterType + " " + filterToCheck.text + " ?") == true) {
+                    if (filter) {
+                        FilterStorage.addFilter(filter, null, null, null, "custom");
+                        document.getElementById('newCustomFilter').value = "";
+                        document.getElementById('amountResult').value = "";
+
+                        originUrl = null;
+                        urlGet = null;
+                        urlIsSet = false;
+                    }
+                } else {
+                    return
+                }
+            } else {
+                FilterStorage.addFilter(filter, null, null, null, "custom");
+                document.getElementById('newCustomFilter').value = "";
+                document.getElementById('amountResult').value = "";
+                originUrl = null;
+                urlGet = null;
+                urlIsSet = false;
             }
-          }else{
-            return
-          }
-        }else{
-          FilterStorage.addFilter(filter, null, null, null, "custom");
-          document.getElementById('newCustomFilter').value = "";
-          document.getElementById('amountResult').value = "";
-          originUrl = null;
-          urlGet = null;
-          urlIsSet=false;
         }
     }
-  }
-  catch (error)
-  {
-    alert(error);
-    return;
-  }
-
-  
+    catch (error) {
+        alert(error);
+    }
 
 
 }
 
 
-function removeCustomSelectedFilters(event)
-{
-  console.log(event);
-  event.preventDefault();
-  var userFiltersBox = document.getElementById("userCustomFiltersBox");
-  var remove = [];
-  for (var i = 0; i < userFiltersBox.length; i++)
-    if (userFiltersBox.options[i].selected)
-      remove.push(userFiltersBox.options[i].value);
-  if (!remove.length)
-    return;
+function removeCustomSelectedFilters(event) {
+    console.log(event);
+    event.preventDefault();
+    var userFiltersBox = document.getElementById("userCustomFiltersBox");
+    var remove = [];
+    for (var i = 0; i < userFiltersBox.length; i++)
+        if (userFiltersBox.options[i].selected)
+            remove.push(userFiltersBox.options[i].value);
+    if (!remove.length)
+        return;
 
-  for (var i = 0; i < remove.length; i++)
-    FilterStorage.removeFilter(Filter.fromText(remove[i]));
-  reloadFilters()
+    for (var i = 0; i < remove.length; i++)
+        FilterStorage.removeFilter(Filter.fromText(remove[i]));
+    reloadFilters()
 }
