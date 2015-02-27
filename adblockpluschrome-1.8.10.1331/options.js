@@ -252,7 +252,7 @@ function startSubscriptionSelection(title, url)
     return;
   }
 
-  $("#tabs").tabs("option","active", 2);
+  //$("#tabs").tabs("option","active", 2);
   $("#addSubscriptionContainer").show();
   $("#addSubscriptionButton").hide();
   $("#subscriptionSelector").focus();
